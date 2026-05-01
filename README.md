@@ -3,6 +3,37 @@
 Home Assistant Presence Tracker (HAPT) is an event-driven device presence tracker for [Home Assistant][homeassistant] on
 an OpenWRT router or access point.
 
+## Install
+
+### Via LuCi (web UI)
+1. Drop the feed's public key into `/etc/apk/keys/`. LuCi has no UI for trusted keys, so do this once from a shell
+   (SSH, or **System > Custom Commands**):
+   ```sh
+   wget -O /etc/apk/keys/hapt.pub https://rtammekivi.github.io/hapt/hapt.pub
+   ```
+2. In LuCi, open **System > Software** and click **Configure APK**. The dialog exposes the contents of
+   `/etc/apk/repositories.d/distfeeds.list` (the official OpenWrt feeds) and `/etc/apk/repositories.d/customfeeds.list`
+   (your own feeds). Add this line under `customfeeds.list`:
+   ```
+   https://rtammekivi.github.io/hapt/packages.adb
+   ```
+   Save & Apply.
+3. Back on the Software page, click **Update lists**, search for `hapt`, then **Install**.
+
+`apk upgrade` (or LuCi's **Upgrade...** button) will pull future versions from the same feed.
+
+### Via shell
+```sh
+wget -O /etc/apk/keys/hapt.pub https://rtammekivi.github.io/hapt/hapt.pub
+echo 'https://rtammekivi.github.io/hapt/packages.adb' >> /etc/apk/repositories.d/customfeeds.list
+apk update
+apk add hapt
+```
+
+### One-shot install (no feed)
+Download an `.apk` from `https://rtammekivi.github.io/hapt/` and install it via LuCi's **System > Software > Upload
+Package**, or from a shell with `apk add --allow-untrusted <file>`.
+
 ## Description
 
 HAPT listens on association and disassociation events to wireless networks, using the hostapd control interface. It
