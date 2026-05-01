@@ -40,8 +40,8 @@ jobs:
           fi
           mkdir -p .keys
           printf '%s\n' "$APK_SIGN_KEY" > .keys/key-hapt.rsa
-          chmod 0600 .keys/key-hapt.rsa
           openssl rsa -in .keys/key-hapt.rsa -pubout -out .keys/key-hapt.rsa.pub
+          chmod 0644 .keys/key-hapt.rsa .keys/key-hapt.rsa.pub
           docker run --rm \
             -v "$PWD/build/bin:/builder/bin" \
             -v "$PWD/.keys:/keys:ro" \
