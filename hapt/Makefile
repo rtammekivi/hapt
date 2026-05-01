@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME       := hapt
 PKG_VERSION    := 0.5
 PKG_RELEASE    := 1
-PKG_LICENSE    := GPL-3.0+
+PKG_LICENSE    := GPL-3.0-or-later
 PKG_MAINTAINER := Oxan van Leeuwen <oxan@oxanvanleeuwen.nl>
 
 include $(INCLUDE_DIR)/package.mk
