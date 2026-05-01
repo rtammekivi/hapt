@@ -14,8 +14,18 @@ bands) is not marked as away.
 ## Usage
 
 ### Installation
-Download a package from the [releases][releases] page, and install it either by uploading it in LuCi (System > Software)
-or running `apk add --allow-untrusted <file>` from a shell.
+The recommended way is to add the package feed published from this repo, so that `apk upgrade` will pull future versions
+automatically. Replace `<owner>` with the GitHub user or organization that publishes the feed:
+
+```sh
+wget -O /etc/apk/keys/hapt.pub https://<owner>.github.io/hapt/hapt.pub
+echo 'https://<owner>.github.io/hapt' >> /etc/apk/repositories.d/customfeeds.list
+apk update
+apk add hapt
+```
+
+Alternatively, download a package from the [releases][releases] page and install it either by uploading it in LuCi
+(System > Software) or running `apk add --allow-untrusted <file>` from a shell.
 
 ### Configuration
 Once the package is installed, you must update the configuration in `/etc/config/hapt`. At minimum the `host` option
@@ -47,6 +57,21 @@ errors that occur.
 ## Development
 You can build a custom package by running the `makepkg.sh` script, which will run the package build in a Docker
 container and place the compiled package in the `build/bin` directory.
+
+### Publishing the feed (one-time setup for forks)
+The CI workflow signs the feed index with an RSA key supplied via the `APK_SIGN_KEY` repository secret, and deploys
+the signed index, the `.apk` files, and the matching public key to GitHub Pages.
+
+To set this up on a fork:
+
+1. Generate a signing keypair locally (do not commit the private key):
+   ```sh
+   openssl genrsa -out key-hapt.rsa 2048
+   ```
+2. Add the contents of `key-hapt.rsa` as a repository secret named `APK_SIGN_KEY` (Settings > Secrets and variables >
+   Actions).
+3. Enable Pages in repository settings (Settings > Pages > Source: GitHub Actions).
+4. Push to `master`. The workflow will publish the feed at `https://<owner>.github.io/hapt/`.
 
 ## Acknowledgments
 
