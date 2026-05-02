@@ -4,12 +4,6 @@ on: [push, pull_request]
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
   build:
@@ -28,57 +22,3 @@ jobs:
         with:
           name: package
           path: build/bin/packages/**/*.apk
-
-      - name: Build signed feed index
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-        env:
-          APK_SIGN_KEY: ${{ secrets.APK_SIGN_KEY }}
-        run: |
-          if [ -z "$APK_SIGN_KEY" ]; then
-            echo "::error::APK_SIGN_KEY secret is not set; generate a keypair and add the private key as a repository secret."
-            exit 1
-          fi
-          mkdir -p .keys
-          printf '%s\n' "$APK_SIGN_KEY" > .keys/key-hapt.rsa
-          openssl rsa -in .keys/key-hapt.rsa -pubout -out .keys/key-hapt.rsa.pub
-          chmod 0644 .keys/key-hapt.rsa .keys/key-hapt.rsa.pub
-          docker run --rm \
-            -v "$PWD/build/bin:/builder/bin" \
-            -v "$PWD/.keys:/keys:ro" \
-            hapt sh -c '
-              set -e
-              cd /builder/bin/packages/x86_64/base
-              /builder/staging_dir/host/bin/apk mkndx \
-                --allow-untrusted \
-                --description "hapt feed" \
-                --sign-key /keys/key-hapt.rsa \
-                --output packages.adb \
-                *.apk
-            '
-
-      - name: Stage feed for Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-        run: |
-          mkdir site
-          cp build/bin/packages/x86_64/base/*.apk site/
-          cp build/bin/packages/x86_64/base/packages.adb site/
-          cp .keys/key-hapt.rsa.pub site/hapt.pub
-
-      - name: Upload Pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
-  deploy:
-    name: Deploy feed to Pages
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4

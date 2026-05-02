@@ -8,9 +8,80 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - id: rp
+        uses: googleapis/release-please-action@v4
+
+  publish:
+    name: Build and publish signed feed
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build package
+        run: |
+          chmod 0777 build/bin/
+          ./makepkg.sh
+      - name: Build signed feed index
+        env:
+          APK_SIGN_KEY: ${{ secrets.APK_SIGN_KEY }}
+        run: |
+          if [ -z "$APK_SIGN_KEY" ]; then
+            echo "::error::APK_SIGN_KEY secret is not set; generate a keypair and add the private key as a repository secret."
+            exit 1
+          fi
+          mkdir -p .keys
+          printf '%s\n' "$APK_SIGN_KEY" > .keys/key-hapt.rsa
+          openssl rsa -in .keys/key-hapt.rsa -pubout -out .keys/key-hapt.rsa.pub
+          chmod 0644 .keys/key-hapt.rsa .keys/key-hapt.rsa.pub
+          docker run --rm \
+            -v "$PWD/build/bin:/builder/bin" \
+            -v "$PWD/.keys:/keys:ro" \
+            hapt sh -c '
+              set -e
+              cd /builder/bin/packages/x86_64/base
+              /builder/staging_dir/host/bin/apk mkndx \
+                --allow-untrusted \
+                --description "hapt feed" \
+                --sign-key /keys/key-hapt.rsa \
+                --output packages.adb \
+                *.apk
+            '
+      - name: Stage feed for Pages
+        run: |
+          mkdir site
+          cp build/bin/packages/x86_64/base/*.apk site/
+          cp build/bin/packages/x86_64/base/packages.adb site/
+          cp .keys/key-hapt.rsa.pub site/hapt.pub
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy feed to Pages
+    needs: [release-please, publish]
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
