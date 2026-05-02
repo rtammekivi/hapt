@@ -92,7 +92,7 @@ logread -f -e hapt
 
 #### Example `/etc/config/hapt`
 
-```
+```ini
 config hapt 'global'
     # Home Assistant URL (including scheme).
     option host                     'http://homeassistant:8123'
@@ -162,10 +162,11 @@ To set this up on a fork:
 
 ## Acknowledgments
 
-This project has been inspired by the [openwrt_hass_devicetracker][hasstracker] package.
+Forked from [oxan/hapt][upstream]. This project has been inspired by the [openwrt_hass_devicetracker][hasstracker]
+package.
 
 [homeassistant]: https://www.home-assistant.io/
+[upstream]: https://github.com/oxan/hapt
 [hasstracker]: https://github.com/mueslo/openwrt_hass_devicetracker
-[releases]: https://github.com/oxan/hapt/releases
 [token]: https://developers.home-assistant.io/docs/auth_api/#long-lived-access-token
 [ha-profile]: https://my.home-assistant.io/redirect/profile/
