@@ -3,6 +3,14 @@
 Home Assistant Presence Tracker (HAPT) is an event-driven device presence tracker for [Home Assistant][homeassistant] on
 an OpenWRT router or access point.
 
+## Description
+
+HAPT listens on association and disassociation events to wireless networks, using the hostapd control interface. It
+keeps track of which device is connected to which networks. When a device connects to its first network, or disconnects
+from its last network, a service call to Home Assistant is performed to mark the device as home or away. By tracking
+active device connections, HAPT ensures that a device switching between different networks (e.g. the 2.4 GHz and 5 GHz
+bands) is not marked as away.
+
 ## Install
 
 ### Via LuCi (web UI)
@@ -42,44 +50,92 @@ apk add hapt
 Download an `.apk` from `https://rtammekivi.github.io/hapt/` and install it via LuCi's **System > Software > Upload
 Package**, or from a shell with `apk add --allow-untrusted <file>`.
 
-## Description
-
-HAPT listens on association and disassociation events to wireless networks, using the hostapd control interface. It
-keeps track of which device is connected to which networks. When a device connects to its first network, or disconnects
-from its last network, a service call to Home Assistant is performed to mark the device as home or away. By tracking
-active device connections, HAPT ensures that a device switching between different networks (e.g. the 2.4 GHz and 5 GHz
-bands) is not marked as away.
-
 ## Usage
 
 ### Configuration
 
-Once the package is installed, you must update the configuration in `/etc/config/hapt`. At minimum the `host` option
-should be set to the URL of your Home Assistant installation (including the scheme, e.g. `http://homeassistant:8123`),
-and the `token` option to a Home Assistant [long-lived access token][token] (these can be generated in the Home
-Assistant web interface, on the Security page of your user profile).
+The package installs but does not start the service — it must be configured first. Required: the Home Assistant URL and
+a long-lived access token from your [Home Assistant profile][ha-profile] ([more info][token]). Strongly recommended: a
+`track_mac_address` whitelist, otherwise every device that connects to the wifi (guests, IoT, etc.) shows up in Home
+Assistant's entity registry.
 
-The `consider_home_connect` and `consider_home_disconnect` settings can be used to configure for how long (in seconds)
-after the first association and last disassociation event the device should be considered home. Since Home Assistant
-does not support marking a device as away (on disconnects), this is implemented by marking the device as home for a
-negligible amount of time, after which Home Assistant will mark the device as away. The default values should be fine
-here.
+```sh
+uci set hapt.global.host='http://homeassistant:8123'
+uci set hapt.global.token='YOUR_LONG_LIVED_TOKEN'
+uci add_list hapt.global.track_mac_address='AA:BB:CC:DD:EE:FF'
+uci commit hapt
+service hapt restart
+```
 
-With the `wifi_interfaces` option, it is possible to specify the wireless interfaces that must be monitored. This can be
-used (for example) to ignore devices on a guest network.
+Repeat the `uci add_list` line for each device you want to track. To find MAC addresses, list the currently associated
+wireless clients (replace `phy1-ap0` with your interface — `iw dev` shows them all):
 
-By listing MAC addresses in the `track_mac_address` option, it is possible to whitelist MAC addresses which are tracked.
-This prevents uninteresting devices from being synchronized with Home Assistant and cluttering the entity registry.
+```sh
+iwinfo phy1-ap0 assoclist
+```
 
-### Running
+Devices that have a DHCP lease are also visible alongside their hostname:
 
-After modifying the configuration, you must restart the service by `service hapt restart`. This can also be done from
-the LuCi interface (System > Startup). HAPT prints log messages to the system log, so that you can verify it is working
-as expected.
+```sh
+cat /tmp/dhcp.leases
+```
 
-It is possible to synchronize just the currently connected devices with Home Assistant by running `hapt` from the
-command line. This can be especially useful to debug the connection with Home Assistant, as this will also print any
-errors that occur.
+In LuCi the same information is under **Status > Overview** (associated wireless stations) and **Status > Overview >
+Active DHCP Leases**.
+
+`service hapt restart` works for both the initial start and for picking up later config changes. Tail hapt's log
+messages with:
+
+```sh
+logread -f -e hapt
+```
+
+#### Example `/etc/config/hapt`
+
+```
+config hapt 'global'
+    # Home Assistant URL (including scheme).
+    option host                     'http://homeassistant:8123'
+
+    # Long-lived access token from Home Assistant (user profile > Security).
+    option token                    'eyJ0eXAiOiJKV1QiLCJhbGciOi...'
+
+    # Seconds a device stays "home" after its first association event.
+    option consider_home_connect    '86400'
+
+    # Seconds a device stays "home" after its last disassociation event.
+    # Home Assistant has no "away" call, so this short window lets HA expire the entity.
+    option consider_home_disconnect '60'
+
+    # Prefix prepended to the Home Assistant device_tracker entity name. Leave empty for none.
+    option device_id_prefix         ''
+
+    # Wireless interfaces to monitor. Omit the list to monitor every interface
+    # under /var/run/hostapd (e.g. to skip a guest network, list only the others).
+    list   wifi_interfaces          'phy1-ap0'
+
+    # MAC address whitelist. Omit entirely to track every device that joins
+    # the wifi (usually not what you want — clutters Home Assistant).
+    list   track_mac_address        'aa:bb:cc:dd:ee:ff'
+    list   track_mac_address        '11:22:33:44:55:66'
+```
+
+### In Home Assistant
+
+hapt calls Home Assistant's `device_tracker.see` service on every connect and disconnect. Each tracked device appears
+as a `device_tracker.<id>` entity with state `home` / `not_home`, where `<id>` is the device's DHCP hostname — or the
+MAC with `:` replaced by `_` if no lease is found — optionally prefixed with `device_id_prefix`. New entities are
+persisted in Home Assistant's `known_devices.yaml` and can be used in automations, presence detection, and dashboards
+like any other device tracker.
+
+### One-shot sync
+
+Synchronize just the currently connected devices and print any errors to the terminal — useful for debugging the Home
+Assistant connection:
+
+```sh
+hapt
+```
 
 ## Development
 
@@ -112,3 +168,4 @@ This project has been inspired by the [openwrt_hass_devicetracker][hasstracker] 
 [hasstracker]: https://github.com/mueslo/openwrt_hass_devicetracker
 [releases]: https://github.com/oxan/hapt/releases
 [token]: https://developers.home-assistant.io/docs/auth_api/#long-lived-access-token
+[ha-profile]: https://my.home-assistant.io/redirect/profile/
