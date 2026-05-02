@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME       := hapt
 # x-release-please-start-version
-PKG_VERSION    := 0.6.0
+PKG_VERSION    := 0.7.0
 # x-release-please-end
 PKG_LICENSE    := GPL-3.0-or-later
 PKG_MAINTAINER := Oxan van Leeuwen <oxan@oxanvanleeuwen.nl>
