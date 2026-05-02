@@ -46,4 +46,20 @@ define Package/hapt/install
 	$(INSTALL_CONF) ./files/hapt.config $(1)/etc/config/hapt
 endef
 
+define Package/hapt/postinst
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] && exit 0
+/etc/init.d/hapt enable
+[ -f /var/run/hapt.pid ] && /etc/init.d/hapt restart
+exit 0
+endef
+
+define Package/hapt/prerm
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] && exit 0
+/etc/init.d/hapt disable
+/etc/init.d/hapt stop
+exit 0
+endef
+
 $(eval $(call BuildPackage,hapt))
