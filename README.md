@@ -15,11 +15,11 @@ bands) is not marked as away.
 
 ### Via LuCi (web UI)
 
-1. Drop the feed's public key into `/etc/apk/keys/`. LuCi has no UI for trusted keys, so do this once from a shell
-   (SSH, or **System > Custom Commands**):
+1. Add the feed's public key. In LuCi, open **System > Administration > Repo Public Keys**. Alongside the stock entries
+   (e.g. `openwrt-25.12.pem`), add a new key and either paste the key contents or point it at the URL:
 
-   ```sh
-   wget -O /etc/apk/keys/hapt.pub https://rtammekivi.github.io/hapt/hapt.pub
+   ```none
+   https://rtammekivi.github.io/hapt/hapt.pub
    ```
 
 2. In LuCi, open **System > Software** and click **Configure APK**. The dialog exposes the contents of
