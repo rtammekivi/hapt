@@ -1,5 +1,9 @@
 # HAPT
 
+> [!IMPORTANT]
+> **This repository is archived and no longer maintained.** It has been superseded by
+> [FaserF/ha-openwrt](https://github.com/FaserF/ha-openwrt). Please use that project instead.
+
 Home Assistant Presence Tracker (HAPT) is an event-driven device presence tracker for [Home Assistant][homeassistant] on
 an OpenWRT router or access point.
 
